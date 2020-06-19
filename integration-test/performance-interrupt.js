@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 /*
  * In this test, GPIO7 is connected to one end of a 1kΩ current limiting
@@ -15,12 +15,12 @@ let irqCount = 0;
 let iv;
 
 // Exit handler
-function exit() {
+const exit = _ => {
   input.unexport();
   output.unexport();
 
   clearInterval(iv);
-}
+};
 process.on('SIGINT', exit);
 
 // Interrupt handler
@@ -36,7 +36,7 @@ input.watch((err, value) => {
 });
 
 // Print number of interrupts once a second.
-iv = setInterval(() => {
+iv = setInterval(_ => {
   console.log(irqCount);
   irqCount = 0;
 }, 1000);

@@ -10,19 +10,10 @@ const blinkLed = _ => {
     return led.unexport();
   }
 
-  led.read((err, value) => { // Asynchronous read
-    if (err) {
-      throw err;
-    }
-
-    led.write(value ^ 1, err => { // Asynchronous write
-      if (err) {
-        throw err;
-      }
-    });
-  });
-
-  setTimeout(blinkLed, 200);
+  led.read()
+    .then(value => led.write(value ^ 1))
+    .then(_ => setTimeout(blinkLed, 200))
+    .catch(err => console.log(err));
 };
 
 blinkLed();

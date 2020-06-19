@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 const assert = require('assert');
 const Gpio = require('../onoff').Gpio;
@@ -6,12 +6,12 @@ const Gpio = require('../onoff').Gpio;
 let output = new Gpio(8, 'out');
 let input = new Gpio(7, 'in', 'both');
 
-function watchWithSecondConfiguration() {
+const watchWithSecondConfiguration = _ => {
   input.watch((err, value) => {
     assert(!err, 'error during interrupt detection');
     assert(value === 1, 'expected interrupt on rising edge');
 
-    setTimeout(() => {
+    setTimeout(_ => {
       input.unexport();
       output.unexport();
 
@@ -20,9 +20,9 @@ function watchWithSecondConfiguration() {
   });
 
   output.writeSync(1);
-}
+};
 
-function changeConfiguration() {
+const changeConfiguration = _ => {
   input.unwatchAll();
 
   let temp = output;
@@ -43,9 +43,9 @@ function changeConfiguration() {
   assert(input.readSync() === 0, 'expected value to be 0');
 
   watchWithSecondConfiguration();
-}
+};
 
-function watchWithFirstConfiguration() {
+const watchWithFirstConfiguration = _ => {
   input.watch((err, value) => {
     assert(!err, 'error during interrupt detection');
     assert(value === 1, 'expected interrupt on rising edge');
@@ -54,6 +54,6 @@ function watchWithFirstConfiguration() {
   });
 
   output.writeSync(1);
-}
+};
 
 watchWithFirstConfiguration();

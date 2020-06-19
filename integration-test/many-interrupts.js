@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 const assert = require('assert');
 const Gpio = require('../onoff').Gpio;
@@ -9,12 +9,12 @@ let toggleCount = 0;
 let falling = 0;
 let rising = 0;
 
-function toggleOutput() {
+const toggleOutput = _ => {
   output.writeSync(output.readSync() ^ 1);
   toggleCount += 1;
-}
+};
 
-function interrupt(err, value) {
+const interrupt = (err, value) => {
   if (err) {
     throw err;
   }
@@ -40,7 +40,7 @@ function interrupt(err, value) {
 
     console.log('ok - ' + __filename);
   }
-}
+};
 
 input.watch(interrupt);
 toggleOutput();

@@ -1,19 +1,25 @@
+[![Build Status](https://travis-ci.org/fivdi/onoff.svg?branch=master)](https://travis-ci.org/fivdi/onoff)
+[![Coverage Status](https://coveralls.io/repos/github/fivdi/onoff/badge.svg)](https://coveralls.io/github/fivdi/onoff)
+[![npm Version](http://img.shields.io/npm/v/onoff.svg)](https://www.npmjs.com/package/onoff)
+[![Downloads Per Month](http://img.shields.io/npm/dm/onoff.svg)](https://www.npmjs.com/package/onoff)
+[![Mentioned in Awesome Node.js](https://awesome.re/mentioned-badge.svg)](https://github.com/sindresorhus/awesome-nodejs#hardware)
+
 # onoff
 
 GPIO access and interrupt detection with **Node.js** on Linux boards like the
-Raspberry Pi, C.H.I.P. or BeagleBone.
+Raspberry Pi or BeagleBone.
 
-onoff supports Node.js versions 4, 6, 8 and 10.
-
-[![Mentioned in Awesome Node.js](https://awesome.re/mentioned-badge.svg)](https://github.com/sindresorhus/awesome-nodejs)
+onoff supports Node.js versions 8, 10, 12, 13 and 14.
 
 ## Contents
 
- * [News & Updates](#news--updates)
  * [Installation](#installation)
  * [Usage](#usage)
    * [LEDs and Buttons](#leds-and-buttons)
    * [Debouncing Buttons](#debouncing-buttons)
+   * [Blink an LED Using the Synchronous API](#blink-an-led-using-the-synchronous-api)
+   * [Blink an LED Using the Asynchronous API and Completion Callbacks](#blink-an-led-using-the-asynchronous-api-and-completion-callbacks)
+   * [Blink an LED Using the Asynchronous API and Promises](#blink-an-led-using-the-asynchronous-api-and-promises)
  * [API](#api)
  * [How Does onoff Work?](#how-does-onoff-work)
  * [Configuring Pullup and Pulldown Resistors](#configuring-pullup-and-pulldown-resistors)
@@ -21,34 +27,14 @@ onoff supports Node.js versions 4, 6, 8 and 10.
  * [Related Packages](#related-packages)
  * [Additional Information](#additional-information)
 
-## News & Updates
-
-### May 2018: onoff v3.1.0
-
-onoff v3.1.0 adds two new features.
-
- * The new static property Gpio.accessible can be used to determine whether or
-not GPIO access is possible.
- * The new static properties Gpio.HIGH and Gpio.LOW can be used in place of
-the numeric constants 1 and 0.
-
-### March 2018: onoff v3.0.0
-
-Prior to v3.0.0 onoff had inadequate and undocumented support for debouncing
-GPIO inputs. onoff v3.0.0 comes with a very effective debouncing
-implementation based on lodash.debounce. It's important to know that the new
-implementation in v3.0.0 is not compatible with the old undocumented
-implementation as the semantics of the debounceTimeout option which can be
-specified when invoking the
-[Gpio Constructor](#gpiogpio-direction--edge--options) have changed.
-An example of the usage of the debounceTimeout can be found at
-[Debouncing Buttons](#debouncing-buttons).
-
 ## Installation
 
 ```
 npm install onoff
 ```
+
+Note that although it's possible to install onoff on non-Linux systems the
+functionality offered by onoff is only available on Linux systems.
 
 ## Usage
 
@@ -66,9 +52,7 @@ const Gpio = require('onoff').Gpio;
 const led = new Gpio(17, 'out');
 const button = new Gpio(4, 'in', 'both');
 
-button.watch(function (err, value) {
-  led.writeSync(value);
-});
+button.watch((err, value) => led.writeSync(value));
 ```
 
 Here two Gpio objects are being created. One called led for the LED connected
@@ -95,7 +79,7 @@ const Gpio = require('onoff').Gpio;
 const led = new Gpio(17, 'out');
 const button = new Gpio(4, 'in', 'both');
 
-button.watch(function (err, value) {
+button.watch((err, value) => {
   if (err) {
     throw err;
   }
@@ -103,7 +87,7 @@ button.watch(function (err, value) {
   led.writeSync(value);
 });
 
-process.on('SIGINT', function () {
+process.on('SIGINT', _ => {
   led.unexport();
   button.unexport();
 });
@@ -131,7 +115,7 @@ const Gpio = require('onoff').Gpio;
 const led = new Gpio(17, 'out');
 const button = new Gpio(4, 'in', 'rising', {debounceTimeout: 10});
 
-button.watch(function (err, value) {
+button.watch((err, value) => {
   if (err) {
     throw err;
   }
@@ -139,10 +123,94 @@ button.watch(function (err, value) {
   led.writeSync(led.readSync() ^ 1);
 });
 
-process.on('SIGINT', function () {
+process.on('SIGINT', _ => {
   led.unexport();
   button.unexport();
 });
+```
+
+#### Blink an LED Using the Synchronous API
+
+Blink an LED connected to GPIO17 for 5 seconds using the synchronous readSync
+and writeSync methods.
+
+```js
+const Gpio = require('../onoff').Gpio; // Gpio class
+const led = new Gpio(17, 'out');       // Export GPIO17 as an output
+
+// Toggle the state of the LED connected to GPIO17 every 200ms
+const iv = setInterval(_ => led.writeSync(led.readSync() ^ 1), 200);
+
+// Stop blinking the LED after 5 seconds
+setTimeout(_ => {
+  clearInterval(iv); // Stop blinking
+  led.unexport();    // Unexport GPIO and free resources
+}, 5000);
+```
+
+#### Blink an LED Using the Asynchronous API and Completion Callbacks
+
+Blink an LED connected to GPIO17 for 5 seconds using the asynchronous read and
+write methods and completion callbacks.
+
+```js
+const Gpio = require('../onoff').Gpio; // Gpio class
+const led = new Gpio(17, 'out');       // Export GPIO17 as an output
+let stopBlinking = false;
+
+// Toggle the state of the LED connected to GPIO17 every 200ms
+const blinkLed = _ => {
+  if (stopBlinking) {
+    return led.unexport();
+  }
+
+  led.read((err, value) => { // Asynchronous read
+    if (err) {
+      throw err;
+    }
+
+    led.write(value ^ 1, err => { // Asynchronous write
+      if (err) {
+        throw err;
+      }
+    });
+  });
+
+  setTimeout(blinkLed, 200);
+};
+
+blinkLed();
+
+// Stop blinking the LED after 5 seconds
+setTimeout(_ => stopBlinking = true, 5000);
+```
+
+#### Blink an LED Using the Asynchronous API and Promises
+
+Blink an LED connected to GPIO17 for 5 seconds using the asynchronous read and
+write methods and Promises.
+
+```js
+const Gpio = require('../onoff').Gpio; // Gpio class
+const led = new Gpio(17, 'out');       // Export GPIO17 as an output
+let stopBlinking = false;
+
+// Toggle the state of the LED connected to GPIO17 every 200ms
+const blinkLed = _ => {
+  if (stopBlinking) {
+    return led.unexport();
+  }
+
+  led.read()
+    .then(value => led.write(value ^ 1))
+    .then(_ => setTimeout(blinkLed, 200))
+    .catch(err => console.log(err));
+};
+
+blinkLed();
+
+// Stop blinking the LED after 5 seconds
+setTimeout(_ => stopBlinking = true, 5000);
 ```
 
 #### Check accessibility
@@ -154,9 +222,7 @@ can be used to achieve this.
 ```js
 const Gpio = require('onoff').Gpio;
 
-const useLed = function (led, value) {
-  led.writeSync(value);
-}
+const useLed = (led, value) => led.writeSync(value);
 
 let led;
 
@@ -164,8 +230,8 @@ if (Gpio.accessible) {
   led = new Gpio(17, 'out');
   // more real code here
 } else {
-  led = { 
-    writeSync: function (value) {
+  led = {
+    writeSync: value => {
       console.log('virtual led now uses value: ' + value);
     }
   };
@@ -225,6 +291,18 @@ written to the GPIO should be inverted. The interrupt generating edge for the
 GPIO also follow this this setting. The valid values for activeLow are true
 and false. Setting activeLow to true inverts. Optional, the default value is
 false.
+- reconfigureDirection - A boolean value specifying whether the direction for
+the GPIO should be reconfigured even though the direction is already
+configured correctly. When an application starts, the direction of a GPIO used
+by that application may already be configured correctly, for example, from a
+previous run of the application. Reconfiguring the direction of that GPIO can
+result in unwanted side effects. For example, if a GPIO is already configured
+as an output and it is reconfigured as an output by passing 'out' to the
+constructor, the value of that output will be set to 0. In some applications
+this is not desirable and the value of the output should not be modified. The
+reconfigureDirection option can help here. If reconfigureDirection is set to
+false the direction of a GPIO that is already correctly configured will not be
+reconfigured. Optional, the default value is true.
 
 GPIOs on Linux are identified by unsigned integers. These are the numbers that
 should be passed to the onoff Gpio constructor when exporting GPIOs to
@@ -234,10 +312,12 @@ to the onoff Gpio constructor when using pin 11 on the expansion header.
 
 ##### read([callback])
 - [callback] - An optional completion callback that gets two arguments (err,
-value), where err is reserved for an error object and value is the number 0
+value), where err is reserved for an Error object and value is the number 0
 or 1 and represents the state of the GPIO.
 
-Read GPIO value asynchronously.
+Read GPIO value asynchronously. If no completion callback is specified read
+returns a Promise which resolves to the value of the GPIO on success or rejects
+with an Error object on failure.
 
 Note that most systems support readback of GPIOs configured as outputs. The
 read method can therefore be invoked for any GPIO, irrespective of whether it
@@ -258,12 +338,22 @@ are examples of such systems.
 - [callback] - An optional completion callback that gets one argument (err),
 where err is reserved for an error object.
 
-Write GPIO value asynchronously.
+Write GPIO value asynchronously. If no completion callback is specified write
+returns a Promise that resolves with no value on success or rejects with an
+Error object on failure.
+
+Note that on most systems invoking write for a GPIO configured as an input
+will result in an EPERM error indicating that the operation is not permitted.
+The Raspberry Pi and BeagleBone are examples of such systems.
 
 ##### writeSync(value)
 - value - The number 0 or 1.
 
 Write GPIO value synchronously.
+
+Note that on most systems invoking writeSync for a GPIO configured as an input
+will result in an EPERM error indicating that the operation is not permitted.
+The Raspberry Pi and BeagleBone are examples of such systems.
 
 ##### watch(callback)
 - callback - A callback that gets two arguments (err, value), where err is
@@ -290,7 +380,10 @@ output.
 
 ##### setDirection(direction)
 - direction - A string specifying whether the GPIO should be configured as an
-input or output. The valid values are 'in' and 'out'.
+input or output. The valid values are 'in', 'out', 'high', and 'low'. If 'out'
+is specified the GPIO will be configured as an output and the value of the GPIO
+will be set to 0. 'high' and 'low' are variants of 'out' that configure the
+GPIO as an output with an initial level of 1 or 0 respectively.
 
 Set GPIO direction.
 
@@ -318,7 +411,7 @@ to the GPIO are inverted.
 - invert - A boolean value specifying whether the values read from or written
 to the GPIO should be inverted. The interrupt generating edge for the GPIO also
 follow this this setting. The valid values for invert are true and false.
-Setting activeLow to true inverts. Optional, the default value is false.
+Setting activeLow to true inverts.
 
 Set GPIO activeLow setting.
 
@@ -345,60 +438,6 @@ This is a static property and should be accessed as `Gpio.accessible`.
 Constants used when reading or writing a GPIO value. Gpio.HIGH and Gpio.LOW
 can be used in place of the numeric constants 1 and 0.
 
-### Synchronous API
-
-Blink the LED connected to GPIO17 for 5 seconds:
-
-```js
-const Gpio = require('onoff').Gpio; // Gpio class
-const led = new Gpio(17, 'out');    // Export GPIO17 as an output
-
-// Toggle the state of the LED connected to GPIO17 every 200ms.
-// Here synchronous methods are used. Asynchronous methods are also available.
-const iv = setInterval(function () {
-  led.writeSync(led.readSync() ^ 1); // 1 = on, 0 = off :)
-}, 200);
-
-// Stop blinking the LED and turn it off after 5 seconds
-setTimeout(function () {
-  clearInterval(iv); // Stop blinking
-  led.writeSync(0);  // Turn LED off
-  led.unexport();    // Unexport GPIO and free resources
-}, 5000);
-```
-
-### Asynchronous API
-
-Blink the LED connected to GPIO17 for 5 seconds:
-
-```js
-const Gpio = require('onoff').Gpio; // Gpio class
-const led = new Gpio(17, 'out');    // Export GPIO17 as an output
-
-// Toggle the state of the LED connected to GPIO17 every 200ms 'count' times.
-// Here asynchronous methods are used. Synchronous methods are also available.
-(function blink(count) {
-  if (count <= 0) {
-    return led.unexport();
-  }
-
-  led.read(function (err, value) { // Asynchronous read
-    if (err) {
-      throw err;
-    }
-
-    led.write(value ^ 1, function (err) { // Asynchronous write
-      if (err) {
-        throw err;
-      }
-    });
-  });
-
-  setTimeout(function () {
-    blink(count - 1);
-  }, 200);
-}(25));
-```
 
 ## How Does onoff Work?
 
@@ -414,6 +453,7 @@ be written. Some systems will also allow the state of a output to be read.
 The GPIO sysfs interface can also be used for interrupt detection. onoff can
 detect several thousand interrupts per second on both the BeagleBone and the
 Raspberry Pi.
+
 
 ## Configuring Pullup and Pulldown Resistors
 
@@ -450,59 +490,67 @@ describes this mechanism in more detail.
 
 ## Benchmarks
 
-Three of the onoff tests are used to monitor performance:
+Three of the onoff tests are used to monitor performance.
 
   * performance-async.js - determine max. no. of write ops per seconds
   * performance-sync.js - determine max. no. of writeSync ops per second
   * performance-interrupt.js - determine max. no. of interrupts per second
 
-The average of ten runs of these tests using various versions of Node.js
-and onoff are shown in the following tables.
+The results of these tests are shown in the following tables.
 
-**Raspberry Pi 3, 1.2Ghz, Raspbian:**
-
-node | onoff | kernel | write / sec | writeSync / sec | interrupts / sec
-:---: | :---: | :---: | ---: | ---: | ---:
-v8.2.1 | v1.1.4 | 4.9.35-v7+ | 27345 | 318771 | 20094
-v6.11.1 | v1.1.4 | 4.9.35-v7+ | 26010 | 280180 | 19050
-v4.8.4 | v1.1.4 | 4.9.35-v7+ | 27674 | 328949 | 18326
-v0.10.29 | v1.1.4 | 4.9.35-v7+ | 23021 | 188573 | 19352
-
-**Raspberry Pi 2, 900Mhz, Raspbian:**
+**Raspberry Pi 4 B, 1.5GHz, Raspbian Buster 10.1**
 
 node | onoff | kernel | write / sec | writeSync / sec | interrupts / sec
 :---: | :---: | :---: | ---: | ---: | ---:
-v8.2.1 | v1.1.4 | 4.9.35-v7+ | 12792 | 181829 | 9691
-v6.11.1 | v1.1.4 | 4.9.35-v7+ | 12348 | 167106 | 9215
-v4.8.4 | v1.1.4 | 4.9.35-v7+ | 13643 | 167248 | 8667
-v0.10.29 | v1.1.4 | 4.9.35-v7+ | 11368 | 98464 | 9451
+v13.5.0 | v5.0.0 | 4.19.75-v7l+ | 25050 | 261875 | 23308
+v12.14.0 | v5.0.0 | 4.19.75-v7l+ | 26249 | 354699 | 24802
+v10.18.0 | v5.0.0 | 4.19.75-v7l+ | 28221 | 356435 | 24767
+v8.17.0 | v5.0.0 | 4.19.75-v7l+ | 28080 | 526504 | 25086
 
-**Raspberry Pi 1, 700Mhz, Raspbian:**
-
-node | onoff | kernel | write / sec | writeSync / sec | interrupts / sec
-:---: | :---: | :---: | ---: | ---: | ---:
-v8.2.1 | v1.1.4 | 4.9.35+ | 2738 | 53589 | 2353
-v6.11.1 | v1.1.4 | 4.9.35+ | 2565 | 23111 | 1709
-v4.8.4 | v1.1.4 | 4.9.35+ | 2806 | 33847 | 1590
-v0.10.29 | v1.1.4 | 4.9.35+ | 2468 | 24837 | 1955
-
-**BeagleBone Black, 1GHz, Debian 9.2:**
+**Raspberry Pi 3 B, 1.2GHz, Raspbian Buster 10.1**
 
 node | onoff | kernel | write / sec | writeSync / sec | interrupts / sec
 :---: | :---: | :---: | ---: | ---: | ---:
-v9.2.0 | v1.1.8 | 4.4.91-ti-r133 | 7584 | 105198 | 6820
-v8.2.1 | v1.1.8 | 4.4.91-ti-r133 | 7908 | 113476 | 6544
-v6.11.4 | v1.1.8 | 4.4.91-ti-r133 | 7784 | 100586 | 6079
-v4.8.4 | v1.1.8 | 4.4.91-ti-r133 | 8236 | 113988 | 5216
+v13.5.0 | v5.0.0 | 4.19.75-v7l+ | 20676 | 158916 | 17259
+v12.14.0 | v5.0.0 | 4.19.75-v7l+ | 21670 | 207222 | 18328
+v10.18.0 | v5.0.0 | 4.19.75-v7l+ | 23661 | 225758 | 20741
+v8.17.0 | v5.0.0 | 4.19.75-v7l+ | 22381 | 331501 | 21266
 
-**BeagleBone, 720MHz, Debian 9.2:**
+**Raspberry Pi 2 B, 900MHz, Raspbian Buster 10.1**
 
 node | onoff | kernel | write / sec | writeSync / sec | interrupts / sec
 :---: | :---: | :---: | ---: | ---: | ---:
-v9.2.0 | v1.1.8 | 4.4.91-ti-r133 | 5348 | 74305 | 4870
-v8.2.1 | v1.1.8 | 4.4.91-ti-r133 | 5703 | 82007 | 4871
-v6.11.4 | v1.1.8 | 4.4.91-ti-r133 | 5534 | 72223 | 4247
-v4.8.4 | v1.1.8 | 4.4.91-ti-r133 | 6020 | 81516 | 3786
+v13.5.0 | v5.0.0 | 4.19.75-v7l+ | 10146 | 87727 | 8798
+v12.14.0 | v5.0.0 | 4.19.75-v7l+ | 10769 | 113107 | 10373
+v10.18.0 | v5.0.0 | 4.19.75-v7l+ | 11843 | 129086 | 10536
+v8.17.0 | v5.0.0 | 4.19.75-v7l+ | 11992 | 177764 | 10466
+
+**Raspberry Pi 1 B, 700MHz, Raspbian Buster 10.1**
+
+node | onoff | kernel | write / sec | writeSync / sec | interrupts / sec
+:---: | :---: | :---: | ---: | ---: | ---:
+v13.5.0 | v5.0.0 | 4.19.75+ | 2158 | 19673 | 1985
+v12.14.0 | v5.0.0 | 4.19.75+ | 2316 | 26696 | 2112
+v10.18.0 | v5.0.0 | 4.19.75+ | 2613 | 33129 | 2225
+v8.17.0 | v5.0.0 | 4.19.75+ | 2651 | 57811 | 2347
+
+**BeagleBone Black, 1GHz, Debian Buster 10.2**
+
+node | onoff | kernel | write / sec | writeSync / sec | interrupts / sec
+:---: | :---: | :---: | ---: | ---: | ---:
+v13.5.0 | v5.0.0 | 4.19.79-ti-r30 | 6509 | 53240 | 5402
+v12.14.0 | v5.0.0 | 4.19.79-ti-r30 | 6855 | 70535 | 5911
+v10.18.0 | v5.0.0 | 4.19.79-ti-r30 | 7564 | 79133 | 5920
+v8.17.0 | v5.0.0 | 4.19.79-ti-r30 | 7116 | 103920 | 6144
+
+**BeagleBone, 720MHz, Debian Buster 10.2**
+
+node | onoff | kernel | write / sec | writeSync / sec | interrupts / sec
+:---: | :---: | :---: | ---: | ---: | ---:
+v13.5.0 | v5.0.0 | 4.19.79-ti-r30 | 4441 | 38425 | 4031
+v12.14.0 | v5.0.0 | 4.19.79-ti-r30 | 5013 | 49741 | 4297
+v10.18.0 | v5.0.0 | 4.19.79-ti-r30 | 5400 | 57157 | 4371
+v8.17.0 | v5.0.0 | 4.19.79-ti-r30 | 5307 | 75034 | 4406
 
 ## Related Packages
 
@@ -518,10 +566,8 @@ of interest.
 
 onoff was tested on the following platforms:
 
-- Raspberry Pi 1, 2 and 3
+- Raspberry Pi 1, 2, 3 and 4
   - Raspbian
-- C.H.I.P.
-  - Debian
 - BeagleBone, BeagleBone Black and PocketBeagle
   - Debian
 
@@ -530,7 +576,7 @@ how GPIO interfaces are made available on that board. The
 [GPIO interfaces](https://www.kernel.org/doc/Documentation/gpio/)
 documentation describes GPIO access conventions rather than standards that must
 be followed so GPIO can vary from platform to platform. For example, onoff
-relies on sysfs files located at /sys/classes/gpio being available. However,
+relies on sysfs files located at /sys/class/gpio being available. However,
 these sysfs files for userspace GPIO are optional and may not be available on a
 particular platform.
 

@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 const assert = require('assert');
 const Gpio = require('../onoff').Gpio;
@@ -8,10 +8,10 @@ const button = new Gpio(7, 'in', 'both', {debounceTimeout: 10});
 let buttonPressedCount = 0;
 let buttonReleasedCount = 0;
 
-function simulateToggleButtonStateWithBounce(cb) {
+const simulateToggleButtonStateWithBounce = cb => {
   let toggleCount = 0;
 
-  const iv = setInterval(() => {
+  const iv = setInterval(_ => {
     if (toggleCount === 19) {
       clearInterval(iv);
       return cb();
@@ -20,13 +20,13 @@ function simulateToggleButtonStateWithBounce(cb) {
     output.writeSync(output.readSync() ^ 1);
     toggleCount += 1;
   }, 2);
-}
+};
 
-function simulatePressAndReleaseButtonWithBounce() {
-  simulateToggleButtonStateWithBounce(() => {
-    setTimeout(() => {
-      simulateToggleButtonStateWithBounce(() => {
-        setTimeout(() => {
+const simulatePressAndReleaseButtonWithBounce = _ => {
+  simulateToggleButtonStateWithBounce(_ => {
+    setTimeout(_ => {
+      simulateToggleButtonStateWithBounce(_ => {
+        setTimeout(_ => {
           assert(buttonPressedCount === 1);
           assert(buttonReleasedCount === 1);
 
@@ -38,7 +38,7 @@ function simulatePressAndReleaseButtonWithBounce() {
       });
     }, 50);
   });
-}
+};
 
 button.watch((err, value) => {
   if (err) {

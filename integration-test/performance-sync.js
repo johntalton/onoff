@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 const Gpio = require('../onoff').Gpio;
 
@@ -15,9 +15,9 @@ const pulseLed = (led, pulseCount) => {
   const writesPerSecond = pulseCount * 2 / (time[0] + time[1] / 1E9);
 
   return writesPerSecond;
-}
+};
 
-const syncWritesPerSecond = () => {
+const syncWritesPerSecond = _ => {
   const led = new Gpio(17, 'out');
   let writes = 0;
 
@@ -31,7 +31,7 @@ const syncWritesPerSecond = () => {
   led.unexport();
 
   return writes / 10;
-}
+};
 
 console.log('ok - ' + __filename);
 console.log(

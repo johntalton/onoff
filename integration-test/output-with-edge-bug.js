@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 // Test for https://github.com/fivdi/onoff/issues/87
 //
@@ -10,23 +10,19 @@
 const Gpio = require('../onoff').Gpio;
 const assert = require('assert');
 
-function ensureGpio17Unexported(cb) {
+const ensureGpio17Unexported = cb => {
   let led = new Gpio(17, 'out');
 
   led.unexport();
 
-  setTimeout(() => {
-    cb();
-  }, 100);
-}
+  setTimeout(_ => cb(), 100);
+};
 
-ensureGpio17Unexported(() => {
+ensureGpio17Unexported(_ => {
   let led;
 
   assert.doesNotThrow(
-    () => {
-      led = new Gpio(17, 'out', 'both');
-    },
+    _ => led = new Gpio(17, 'out', 'both'),
     'can\'t instantiate a Gpio for an output with edge option specified'
   );
 

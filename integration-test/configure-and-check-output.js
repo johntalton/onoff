@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 const Gpio = require('../onoff').Gpio;
 const assert = require('assert');
@@ -12,7 +12,7 @@ assert(output.readSync() === 1);
 output.writeSync(0);
 assert(output.readSync() === 0);
 
-output.write(1, (err) => {
+output.write(1, err => {
   if (err) {
     throw err;
   }
